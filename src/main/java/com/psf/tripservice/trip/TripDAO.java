@@ -1,15 +1,13 @@
 package com.psf.tripservice.trip;
 
-import java.util.List;
-
 import com.psf.tripservice.exception.CollaboratorCallException;
 import com.psf.tripservice.user.User;
 
-public class TripDAO {
+import java.util.List;
 
-	public static List<Trip> findTripsByUser(User user) {
-		throw new CollaboratorCallException(
-				"TripDAO should not be invoked on an unit test.");
-	}
-	
+public class TripDAO {
+    public List<Trip> findTripsByUser(User user) {
+        throw new CollaboratorCallException(
+                "TripDAO should not be invoked on an unit test.");
+    }
 }
