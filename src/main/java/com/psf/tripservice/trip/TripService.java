@@ -2,29 +2,32 @@ package com.psf.tripservice.trip;
 
 import com.psf.tripservice.exception.UserNotLoggedInException;
 import com.psf.tripservice.user.User;
-import com.psf.tripservice.user.UserSession;
 
-import java.util.ArrayList;
 import java.util.List;
+
+import static java.util.Collections.emptyList;
 
 public class TripService {
 
-    private TripDAO tripDAO;
+    private final TripDAO tripDAO;
 
-    public TripService(TripDAO tripDAO) {
+    public TripService(final TripDAO tripDAO) {
         this.tripDAO = tripDAO;
     }
 
-    public List<Trip> getTripsByUser(User user, User loggedUser) throws UserNotLoggedInException {
+    public List<Trip> getFriendTrips(final User friend, final User loggedUser) throws UserNotLoggedInException {
         if (loggedUser == null) {
             throw new UserNotLoggedInException();
         }
-        for (User friend : user.getFriends()) {
-            if (friend.equals(loggedUser)) {
-                return tripDAO.findTripsByUser(user);
-            }
-        }
-
-        return new ArrayList<>();
+        return friend.isFriendOf(loggedUser) ? findTripsBy(friend) : noTrips();
     }
+
+    protected List<Trip> findTripsBy(final User user) {
+        return tripDAO.findTripsBy(user);
+    }
+
+    private static List<Trip> noTrips() {
+        return emptyList();
+    }
+
 }
