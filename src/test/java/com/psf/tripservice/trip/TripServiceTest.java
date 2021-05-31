@@ -2,69 +2,70 @@ package com.psf.tripservice.trip;
 
 import com.psf.tripservice.exception.UserNotLoggedInException;
 import com.psf.tripservice.user.User;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.util.List;
 
+import static com.psf.tripservice.user.User.guest;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 public class TripServiceTest {
 
-    TripDAO tripDAO;
+    private static final Trip TO_CHATEAUDUN = Trip.to("Châteaudun");
+    private static final Trip TO_CHICAGO = Trip.to("Chicago");
 
-    @BeforeEach
-    public void setUp() {
-        tripDAO = Mockito.mock(TripDAO.class);
+    private final TripDAO tripDAO = mock(TripDAO.class);
+    private final TripService tripService = new TripService(tripDAO);
+
+    @Test
+    void should_fail_to_get_friend_trips_when_user_is_not_logged_in() {
+        // Given
+        final User loggedUser = guest();
+        final User user = aUserWhoWent(TO_CHATEAUDUN);
+        // When
+        final ThrowingCallable call = () -> tripService.getFriendTrips(user, loggedUser);
+        // Then
+        assertThatExceptionOfType(UserNotLoggedInException.class)
+                .isThrownBy(call);
     }
 
     @Test
-    void should_throw_exception_when_user_not_logged_in() {
+    void should_get_no_friend_trips_when_user_is_not_friends_with_logged_user() {
         // Given
-        TripService tripService = new TripService(tripDAO);
+        final User loggedUser = aUserWhoWent(TO_CHICAGO);
+        final User notAFriend = aUserWhoWent(TO_CHATEAUDUN);
         // When
+        final List<Trip> trips = tripService.getFriendTrips(notAFriend, loggedUser);
         // Then
-        Assertions.assertThrows(UserNotLoggedInException.class, () -> {
-            tripService.getTripsByUser(null, null);
-        });
+        assertThat(trips).isEmpty();
     }
 
     @Test
-    void should_return_empty_trips_when_user_has_no_friends() {
+    void should_get_friend_trips_when_user_is_friend_with_logged_user() {
         // Given
-        TripService tripService = new TripService(tripDAO);
+        final User loggedUser = aUserWhoWent(TO_CHICAGO);
+        final User friend = aFriendOf(loggedUser);
+        given(tripDAO.findTripsBy(friend)).willReturn(List.of(TO_CHATEAUDUN));
         // When
-        List<Trip> tripsByUser = tripService.getTripsByUser(new User(), new User());
+        final List<Trip> trips = tripService.getFriendTrips(friend, loggedUser);
         // Then
-        assertThat(tripsByUser).isEmpty();
+        assertThat(trips).containsExactly(TO_CHATEAUDUN);
     }
 
-    @Test
-    void should_return_empty_trips_when_user_has_friends() {
-        // Given
-        TripService tripService = new TripService(tripDAO);
-        User user = new User();
-        user.addFriend(new User());
-        // When
-        List<Trip> tripsByUser = tripService.getTripsByUser(user, new User());
-        // Then
-        assertThat(tripsByUser).isEmpty();
+    private static User aUserWhoWent(final Trip toDestination) {
+        final User user = new User();
+        user.addTrip(toDestination);
+        return user;
     }
 
-    @Test
-    void should_return_trips_when_user_is_friend_with_loggedUser() {
-        // Given
-        User loggedUser = new User();
-        TripService tripService = new TripService(tripDAO);
-        User user = new User();
-        user.addFriend(loggedUser);
-        Mockito.when(tripDAO.findTripsByUser(user)).thenReturn(List.of(new Trip("Miami")));
-
-        // When
-        List<Trip> tripsByUser = tripService.getTripsByUser(user, loggedUser);
-        // Then
-        assertThat(tripsByUser).isNotEmpty();
+    private static User aFriendOf(final User friend) {
+        final User user = new User();
+        user.addFriend(friend);
+        return user;
     }
+
 }
